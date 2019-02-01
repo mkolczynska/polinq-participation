@@ -3,14 +3,11 @@
 
 #devtools::install_github("xmarquez/vdem")
 library(vdem)
-#devtools::install_github("xmarquez/democracyData")
-library(democracyData)
 library(WDI)
 library(countrycode) # converting country codes
 library(xlsx)
 library(tidyverse)
 library(readxl)
-library(readstata13)
 library(data.table)
 
 
