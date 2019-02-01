@@ -132,3 +132,23 @@ merged %>%
 ### WRITE FILE TO DISC -------------------
 
 fwrite(merged, "merged-20190201a.csv")
+
+
+### WORLD INEQUALITY DATABASE ----------------
+
+#devtools::install_github("WIDworld/wid-r-tool")
+library("wid")
+
+### more info: 
+### https://github.com/WIDworld/wid-r-tool
+### vignette("wid-demo")
+
+wid <- download_wid(
+  indicators = "shweal",
+  areas = "all",
+  years = "all",
+  perc = "all"
+)
+
+
+
