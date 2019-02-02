@@ -14,7 +14,7 @@ library(data.table)
 ### V-DEM ---------------------
 
 vdem.part <- extract_vdem(name_pattern = "v2x_partipdem", include_uncertainty = FALSE) %>%
-  select(iso3 = vdem_country_text_id, year, vdem_par = v2x_partipdem) %>%
+  select(iso3 = vdem_country_text_id, year, vdem_par = v2x_partipdem)
   mutate(year = as.numeric(year))
 
 
@@ -24,8 +24,7 @@ swiid <- read.csv("https://raw.githubusercontent.com/fsolt/swiid/master/data/swi
                   stringsAsFactors = FALSE, encoding = "UTF-8") %>%
   mutate(iso3 = countrycode(country, "country.name", "iso3c")) %>%
   mutate(iso3 = ifelse(country == "Kosovo", "XKX", iso3)) %>%
-  select(iso3, year, gini_disp) %>%
-  mutate(year = as.numeric(year))
+  select(iso3, year, gini_disp)
 
 
 ### POLYARCHY ------------------
@@ -46,6 +45,9 @@ tmp <- tempfile(tmpdir = td, fileext = ".xlsx")
 download.file(url = myurl, destfile = tmp, mode="wb")
 excel_sheets(tmp)
 
+names(read.xlsx(file = tmp, sheetIndex = 2))
+
+
 fh.list <- list()
 for (i in 1:13) {
   fh.list[[i]] <- read.xlsx(file = tmp, sheetIndex = i+1, colIndex = c(1,6))
@@ -61,6 +63,13 @@ fh <- do.call("rbind", fh.list) %>%
 
 ### POLITY IV ----------------------
 
+a <- haven::read_sav("http://www.systemicpeace.org/inscr/p4v2017.sav") %>%
+  mutate(iso3 = countrycode(country, "country.name", "iso3c")) %>%
+  mutate(iso3 = ifelse(country == "Kosovo", "XKX", iso3)) %>%
+  select(iso3, year, p4_polcomp = polcomp) %>%
+  mutate(p4_polcomp = ifelse(p4_polcomp %in% c(-66, -77, -88), NA, p4_polcomp))
+
+
 myurl <- "http://www.systemicpeace.org/inscr/p4v2017.xls"
 td = tempdir()
 tmp <- tempfile(tmpdir = td, fileext = ".xls")
@@ -70,9 +79,8 @@ excel_sheets(tmp)
 polity <- readxl::read_excel(tmp) %>%
   mutate(iso3 = countrycode(country, "country.name", "iso3c")) %>%
   mutate(iso3 = ifelse(country == "Kosovo", "XKX", iso3)) %>%
-  select(iso3, year, p4_polcomp = polcomp) %>%
-  mutate(year = as.numeric(year),
-         p4_polcomp = ifelse(p4_polcomp %in% c(-66, -77, -88), NA, p4_polcomp))
+  select(iso3, year, p4_polcomp = polcomp)
+  mutate(p4_polcomp = ifelse(p4_polcomp %in% c(-66, -77, -88), NA, p4_polcomp))
 
 
 ### DEMOCRACY BAROMETER -------------
@@ -86,8 +94,7 @@ excel_sheets(tmp)
 db <- readxl::read_excel(tmp, skip = 4) %>%
   mutate(iso3 = countrycode(`Ccode QOG`, "iso3n", "iso3c")) %>%
   select(iso3, year = Year, db_PARTICIP = PARTICIP) %>%
-  mutate(year = as.numeric(year),
-         db_PARTICIP = as.numeric(db_PARTICIP))
+  mutate(db_PARTICIP = as.numeric(db_PARTICIP))
 
 
 ### POVERTY (WORLD BANK) ----------------------
