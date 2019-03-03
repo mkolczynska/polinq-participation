@@ -68,7 +68,7 @@ fh <- do.call("rbind", fh.list) %>%
 fh_status <- download_fh(verbose = FALSE) %>%
   mutate(iso3 = countrycode(fh_country, "country.name", "iso3c")) %>%
   mutate(iso3 = ifelse(fh_country %in% c("Kosovo", "Kosovo*"), "XKX", iso3)) %>%
-  select(iso3, fh_status = status, fh_total, fh_cl = cl, fh_pr = pr)
+  select(iso3, year, fh_status = status, fh_total, fh_cl = cl, fh_pr = pr)
 
 ### POLITY IV ----------------------
 
