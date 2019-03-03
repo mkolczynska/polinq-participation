@@ -50,7 +50,7 @@ names(read.xlsx(file = tmp, sheetIndex = 2))
 
 fh.list <- list()
 for (i in 1:13) {
-  fh.list[[i]] <- read.xlsx(file = tmp, sheetIndex = i+1, colIndex = c(1,6))
+  fh.list[[i]] <- read.xlsx(file = tmp, sheetIndex = i+1, colIndex = c(1,2,6))
   fh.list[[i]]$Country.Territory <- gsub("[*].*$","",fh.list[[i]]$Country.Territory)
   fh.list[[i]]$year <- 2018 - i + 1
 }
@@ -58,16 +58,16 @@ for (i in 1:13) {
 fh <- do.call("rbind", fh.list) %>%
   mutate(iso3 = countrycode(Country.Territory, "country.name", "iso3c")) %>%
   mutate(iso3 = ifelse(Country.Territory %in% c("Kosovo", "Kosovo*"), "XKX", iso3)) %>%
-  select(iso3, year, fh_B_aggr = B.Aggr)
+  select(iso3, year, fh_status - Status, fh_B_aggr = B.Aggr)
 
 
 ### POLITY IV ----------------------
 
-a <- haven::read_sav("http://www.systemicpeace.org/inscr/p4v2017.sav") %>%
-  mutate(iso3 = countrycode(country, "country.name", "iso3c")) %>%
-  mutate(iso3 = ifelse(country == "Kosovo", "XKX", iso3)) %>%
-  select(iso3, year, p4_polcomp = polcomp) %>%
-  mutate(p4_polcomp = ifelse(p4_polcomp %in% c(-66, -77, -88), NA, p4_polcomp))
+# a <- haven::read_sav("http://www.systemicpeace.org/inscr/p4v2017.sav") %>%
+#   mutate(iso3 = countrycode(country, "country.name", "iso3c")) %>%
+#   mutate(iso3 = ifelse(country == "Kosovo", "XKX", iso3)) %>%
+#   select(iso3, year, p4_polcomp = polcomp) %>%
+#   mutate(p4_polcomp = ifelse(p4_polcomp %in% c(-66, -77, -88), NA, p4_polcomp))
 
 
 myurl <- "http://www.systemicpeace.org/inscr/p4v2017.xls"
