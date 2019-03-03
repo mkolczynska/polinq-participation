@@ -3,6 +3,8 @@
 
 #devtools::install_github("xmarquez/vdem")
 library(vdem)
+#devtools::install_github("xmarquez/democracyData")
+library(democracyData)
 library(WDI)
 library(countrycode) # converting country codes
 library(xlsx)
@@ -37,7 +39,7 @@ polyarchy <- read.csv2("https://www.prio.org/Global/upload/CSCW/Data/Governance/
          polyarch_part = as.numeric(polyarch_part))
 
 
-### FREEDOM HOUSE -----------------------
+### FREEDOM HOUSE - PARTICIPATION -----------------------
 
 myurl <- "https://freedomhouse.org/sites/default/files/Aggregate%20Category%20and%20Subcategory%20Scores%20FIW2003-2018.xlsx"
 td = tempdir()
@@ -50,7 +52,7 @@ names(read.xlsx(file = tmp, sheetIndex = 2))
 
 fh.list <- list()
 for (i in 1:13) {
-  fh.list[[i]] <- read.xlsx(file = tmp, sheetIndex = i+1, colIndex = c(1,2,6))
+  fh.list[[i]] <- read.xlsx(file = tmp, sheetIndex = i+1, colIndex = c(1,6))
   fh.list[[i]]$Country.Territory <- gsub("[*].*$","",fh.list[[i]]$Country.Territory)
   fh.list[[i]]$year <- 2018 - i + 1
 }
@@ -58,8 +60,15 @@ for (i in 1:13) {
 fh <- do.call("rbind", fh.list) %>%
   mutate(iso3 = countrycode(Country.Territory, "country.name", "iso3c")) %>%
   mutate(iso3 = ifelse(Country.Territory %in% c("Kosovo", "Kosovo*"), "XKX", iso3)) %>%
-  select(iso3, year, fh_status - Status, fh_B_aggr = B.Aggr)
+  select(iso3, year, fh_B_aggr = B.Aggr)
 
+
+### FREEDOM HOUSE - STATUS --------------------
+
+fh_status <- download_fh(verbose = FALSE) %>%
+  mutate(iso3 = countrycode(fh_country, "country.name", "iso3c")) %>%
+  mutate(iso3 = ifelse(fh_country %in% c("Kosovo", "Kosovo*"), "XKX", iso3)) %>%
+  select(iso3, fh_status = status, fh_total, fh_cl = cl, fh_pr = pr)
 
 ### POLITY IV ----------------------
 
@@ -79,7 +88,7 @@ excel_sheets(tmp)
 polity <- readxl::read_excel(tmp) %>%
   mutate(iso3 = countrycode(country, "country.name", "iso3c")) %>%
   mutate(iso3 = ifelse(country == "Kosovo", "XKX", iso3)) %>%
-  select(iso3, year, p4_polcomp = polcomp)
+  select(iso3, year, p4_polcomp = polcomp) %>%
   mutate(p4_polcomp = ifelse(p4_polcomp %in% c(-66, -77, -88), NA, p4_polcomp))
 
 
@@ -108,12 +117,20 @@ poverty <- WDI(country="all", indicator=c("SI.POV.NAHC"),
 ### MERGE ALL DATA ----------------------------
 
 merged <- full_join(db, fh) %>%
+  full_join(fh_status) %>%
   full_join(polity) %>%
   full_join(polyarchy) %>%
   full_join(swiid) %>%
   full_join(vdem.part) %>%
   full_join(poverty) %>%
-  mutate(country = countrycode(iso3, "iso3c", "country.name"))
+  mutate(country = countrycode(iso3, "iso3c", "country.name"))  %>%
+  filter(!is.na(iso3))
+
+
+### WRITE FILE TO DISC -------------------
+
+fwrite(merged, "merged-20190303.csv")
+
 
 
 ### CORRELATIONS -----------------------
@@ -134,11 +151,6 @@ merged %>%
   ggplot(., aes(x = p4_polcomp, y = vdem_par)) +
   geom_point() +
   geom_smooth(method='lm')
-
-
-### WRITE FILE TO DISC -------------------
-
-fwrite(merged, "merged-20190303.csv")
 
 
 ### WORLD INEQUALITY DATABASE ----------------
