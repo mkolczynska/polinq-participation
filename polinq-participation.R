@@ -138,7 +138,7 @@ merged %>%
 
 ### WRITE FILE TO DISC -------------------
 
-fwrite(merged, "merged-20190201a.csv")
+fwrite(merged, "merged-20190303.csv")
 
 
 ### WORLD INEQUALITY DATABASE ----------------
