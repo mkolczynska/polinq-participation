@@ -16,8 +16,9 @@ library(data.table)
 ### V-DEM ---------------------
 
 vdem.part <- extract_vdem(name_pattern = "v2x_partipdem", include_uncertainty = FALSE) %>%
-  select(iso3 = vdem_country_text_id, year, vdem_par = v2x_partipdem)
-  mutate(year = as.numeric(year))
+  select(iso3 = vdem_country_text_id, year, vdem_par = v2x_partipdem) %>%
+  mutate(year = as.numeric(year)) %>%
+  drop_na(iso3, year, vdem_par)
 
 
 ### SWIID -------------------
@@ -25,8 +26,12 @@ vdem.part <- extract_vdem(name_pattern = "v2x_partipdem", include_uncertainty = 
 swiid <- read.csv("https://raw.githubusercontent.com/fsolt/swiid/master/data/swiid7_1_summary.csv",
                   stringsAsFactors = FALSE, encoding = "UTF-8") %>%
   mutate(iso3 = countrycode(country, "country.name", "iso3c")) %>%
-  mutate(iso3 = ifelse(country == "Kosovo", "XKX", iso3)) %>%
-  select(iso3, year, gini_disp)
+  mutate(iso3 = ifelse(country == "Kosovo", "XKX", iso3),
+         iso3 = ifelse(country == "Czechoslovakia", "CSK", iso3),
+         iso3 = ifelse(country == "Soviet Union", "SUN", iso3),
+         iso3 = ifelse(country == "Yugoslavia", "YUG", iso3)) %>%
+  select(iso3, year, gini_disp) %>%
+  drop_na(iso3, year, gini_disp)
 
 
 ### POLYARCHY ------------------
@@ -36,7 +41,8 @@ polyarchy <- read.csv2("https://www.prio.org/Global/upload/CSCW/Data/Governance/
   mutate(iso3 = countrycode(Abbr, "cowc", "iso3c")) %>%
   select(iso3, year = Year, polyarch_part = Part) %>%
   mutate(year = as.numeric(year),
-         polyarch_part = as.numeric(polyarch_part))
+         polyarch_part = as.numeric(polyarch_part)) %>%
+  drop_na(iso3, year, polyarch_part)
 
 
 ### FREEDOM HOUSE - PARTICIPATION -----------------------
@@ -60,15 +66,31 @@ for (i in 1:13) {
 fh <- do.call("rbind", fh.list) %>%
   mutate(iso3 = countrycode(Country.Territory, "country.name", "iso3c")) %>%
   mutate(iso3 = ifelse(Country.Territory %in% c("Kosovo", "Kosovo*"), "XKX", iso3)) %>%
-  select(iso3, year, fh_B_aggr = B.Aggr)
+  filter(!(Country.Territory %in% c("Israeli Occupied Territories",
+                                    "Northern Cyprus",
+                                    "Pakistani Kashmir",
+                                    "Indian Kashmir",
+                                    "Somaliland"))) %>%
+  select(iso3, year, fh_B_aggr = B.Aggr) %>%
+  filter(iso3 != "PSE") %>%
+  drop_na(iso3, year, fh_B_aggr)
 
 
 ### FREEDOM HOUSE - STATUS --------------------
 
 fh_status <- download_fh(verbose = FALSE) %>%
+  filter(!(fh_country %in% c("Northern Cyprus", "South Vietnam",
+                             "Vietnam, N."))) %>%
   mutate(iso3 = countrycode(fh_country, "country.name", "iso3c")) %>%
-  mutate(iso3 = ifelse(fh_country %in% c("Kosovo", "Kosovo*"), "XKX", iso3)) %>%
-  select(iso3, year, fh_status = status, fh_total, fh_cl = cl, fh_pr = pr)
+  mutate(iso3 = ifelse(fh_country %in% c("Kosovo", "Kosovo*"), "XKX", iso3),
+         iso3 = ifelse(fh_country == "East Germany", "DDR", iso3),
+         iso3 = ifelse(fh_country == "Czechoslovakia", "CSK", iso3),
+         iso3 = ifelse(fh_country == "Soviet Union", "SUN", iso3),
+         iso3 = ifelse(fh_country == "Yugoslavia", "YUG", iso3),
+         iso3 = ifelse(fh_country == "Yugoslavia (Serbia & Montenegro)", "SCG", iso3)) %>%
+  select(iso3, year, fh_status = status, fh_total, fh_cl = cl, fh_pr = pr) %>%
+  drop_na(iso3, year, fh_status, fh_cl, fh_pr)
+
 
 ### POLITY IV ----------------------
 
@@ -86,10 +108,21 @@ download.file(url = myurl, destfile = tmp, mode="wb")
 excel_sheets(tmp)
 
 polity <- readxl::read_excel(tmp) %>%
+  filter(year >= 1945) %>%
   mutate(iso3 = countrycode(country, "country.name", "iso3c")) %>%
-  mutate(iso3 = ifelse(country == "Kosovo", "XKX", iso3)) %>%
+  mutate(iso3 = ifelse(country == "Kosovo", "XKX", iso3),
+         iso3 = ifelse(country == "Czechoslovakia", "CSK", iso3),
+         iso3 = ifelse(country == "Germany East", "DDR", iso3),
+         iso3 = ifelse(country == "Yugoslavia", "YUG", iso3),
+         iso3 = ifelse(country == "Soviet Union", "SUN", iso3)) %>%
+  filter(!(country %in% c("Yemen South", "Yemen North", 
+                          "Vietnam South", "Vietnam North",
+                          "Sudan", "Sudan-North"))) %>%
   select(iso3, year, p4_polcomp = polcomp) %>%
-  mutate(p4_polcomp = ifelse(p4_polcomp %in% c(-66, -77, -88), NA, p4_polcomp))
+  mutate(p4_polcomp = ifelse(p4_polcomp %in% c(-66, -77, -88), NA, p4_polcomp)) %>%
+  group_by(iso3, year) %>%
+  summarise(p4_polcomp = mean(p4_polcomp)) %>%
+  drop_na(iso3, year, p4_polcomp)
 
 
 ### DEMOCRACY BAROMETER -------------
@@ -103,34 +136,34 @@ excel_sheets(tmp)
 db <- readxl::read_excel(tmp, skip = 4) %>%
   mutate(iso3 = countrycode(`Ccode QOG`, "iso3n", "iso3c")) %>%
   select(iso3, year = Year, db_PARTICIP = PARTICIP) %>%
-  mutate(db_PARTICIP = as.numeric(db_PARTICIP))
+  mutate(db_PARTICIP = as.numeric(db_PARTICIP)) %>%
+  drop_na(iso3, year, db_PARTICIP)
 
 
 ### POVERTY (WORLD BANK) ----------------------
 
 poverty <- WDI(country="all", indicator=c("SI.POV.NAHC"),
     start=1900, end=2018, extra=TRUE, cache=NULL) %>%
-  filter(!is.na(SI.POV.NAHC)) %>%
-  select(iso3 = iso3c, year, wb_poverty = SI.POV.NAHC)
+  select(iso3 = iso3c, year, wb_poverty = SI.POV.NAHC) %>%
+  drop_na(iso3, year, wb_poverty)
 
 
 ### MERGE ALL DATA ----------------------------
 
-merged <- full_join(db, fh) %>%
-  full_join(fh_status) %>%
-  full_join(polity) %>%
-  full_join(polyarchy) %>%
-  full_join(swiid) %>%
-  full_join(vdem.part) %>%
-  full_join(poverty) %>%
+merged <- full_join(db, fh, by = c("iso3", "year")) %>%
+  full_join(fh_status, by = c("iso3", "year")) %>%
+  full_join(polity, by = c("iso3", "year")) %>%
+  full_join(polyarchy, by = c("iso3", "year")) %>%
+  full_join(swiid, by = c("iso3", "year")) %>%
+  full_join(vdem.part, by = c("iso3", "year")) %>%
+  full_join(poverty, by = c("iso3", "year")) %>%
   mutate(country = countrycode(iso3, "iso3c", "country.name"))  %>%
   filter(!is.na(iso3))
 
 
 ### WRITE FILE TO DISC -------------------
 
-fwrite(merged, "merged-20190303.csv")
-
+fwrite(merged, "merged-20190304.csv")
 
 
 ### CORRELATIONS -----------------------
