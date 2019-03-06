@@ -157,13 +157,19 @@ merged <- full_join(db, fh, by = c("iso3", "year")) %>%
   full_join(swiid, by = c("iso3", "year")) %>%
   full_join(vdem.part, by = c("iso3", "year")) %>%
   full_join(poverty, by = c("iso3", "year")) %>%
-  mutate(country = countrycode(iso3, "iso3c", "country.name"))  %>%
-  filter(!is.na(iso3))
+  mutate(country = countrycode(iso3, "iso3c", "country.name"),
+         country = ifelse(iso3 == "XKX", "Kosovo", country),
+         country = ifelse(iso3 == "DDR", "East Germany", country),
+         country = ifelse(iso3 == "YUG", "Yugoslavia", country),
+         country = ifelse(iso3 == "CSK", "Czechoslovakia", country),
+         country = ifelse(iso3 == "SCG", "Serbia&Mongenegro", country),
+         country = ifelse(iso3 == "SUN", "Soviet Union", country)) %>%
+  filter(!is.na(iso3), !is.na(country))
 
 
 ### WRITE FILE TO DISC -------------------
 
-fwrite(merged, "merged-20190304.csv")
+fwrite(merged, "merged-20190306.csv")
 
 
 ### CORRELATIONS -----------------------
